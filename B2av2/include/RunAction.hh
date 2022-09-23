@@ -34,10 +34,12 @@
 #include "globals.hh"
 #include "G4Accumulable.hh"
 
-class G4Run;
 
-namespace B2
-{
+
+class DetectorConstruction;
+class Run;
+class PrimaryGeneratorAction;
+class HistoManager;
 
 /// Run action class
 
@@ -49,11 +51,17 @@ class RunAction : public G4UserRunAction
 
     void BeginOfRunAction(const G4Run* run) override;
     void   EndOfRunAction(const G4Run* run) override;
-     void AddEdep (G4double edep);
+    void AddEdep1 (G4double edep);
+    void AddEdep2 (G4double edep);
   private:
-     G4Accumulable<G4double> fEdep = 0; 
+    DetectorConstruction*      fDetector;
+    PrimaryGeneratorAction*    fPrimary;
+    Run*                       fRun;    
+    HistoManager*              fHistoManager;
+    G4Accumulable<G4double> fEdep1 = 0; 
+    G4Accumulable<G4double> fEdep2 = 0;
 };
 
-}
+
 
 #endif

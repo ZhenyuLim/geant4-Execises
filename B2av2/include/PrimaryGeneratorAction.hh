@@ -32,12 +32,14 @@
 
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "globals.hh"
+#include "DetectorConstruction.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4ParticleGun.hh"
 
 class G4ParticleGun;
 class G4Event;
 
-namespace B2
-{
+
 
 /// The primary generator action class with particle gum.
 ///
@@ -54,15 +56,40 @@ class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 
     void GeneratePrimaries(G4Event* ) override;
 
-    G4ParticleGun* GetParticleGun() {return fParticleGun;}
+    G4ParticleGun* GetParticleGun() {return particleGun;}
 
-    // Set methods
-    void SetRandomFlag(G4bool );
+    //reture source position
+     G4double sourcepositionX (){ return sourceX;};
+
+     G4double sourcepositionY (){ return sourceY;};
+
+     G4double sourcepositionZ (){ return sourceZ;};
 
   private:
-    G4ParticleGun* fParticleGun = nullptr; // G4 particle gun
+    G4ParticleGun* particleGun = nullptr; // G4 particle gun
+
+    //source position
+
+     DetectorConstruction* getsizeofroom = new DetectorConstruction;
+
+     G4double roomX = getsizeofroom->getroominLength();
+
+     G4double roomY = getsizeofroom->getroominWidth();
+
+     G4double roomZ = getsizeofroom->getroominHighth();
+
+     G4double sourceX = 0.*m;
+
+     G4double sourceY = roomY/2-0.9*m;
+
+     G4double sourceZ = -roomZ/2+1.6*m;
+
+     G4double rBeam;
+
+     G4double pi = 3.1415926;
+
 };
 
-}
+
 
 #endif

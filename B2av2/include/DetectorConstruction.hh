@@ -27,12 +27,15 @@
 /// \file DetectorConstruction.hh
 /// \brief Definition of the B2a::DetectorConstruction class
 
-#ifndef B2aDetectorConstruction_h
-#define B2aDetectorConstruction_h 1
+#ifndef DetectorConstruction_h
+#define DetectorConstruction_h 1
 
 #include "globals.hh"
 #include "G4VUserDetectorConstruction.hh"
-#include "tls.hh"
+#include "G4Material.hh"
+#include "G4SystemOfUnits.hh"
+
+
 
 class G4VPhysicalVolume;
 class G4LogicalVolume;
@@ -40,8 +43,9 @@ class G4Material;
 class G4UserLimits;
 class G4GlobalMagFieldMessenger;
 
-namespace B2a
-{
+
+
+
 
 class DetectorMessenger;
 
@@ -59,35 +63,43 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     void ConstructSDandField() override;
 
     // Set methods
-    void SetTargetMaterial (G4String );
-    void SetChamberMaterial(G4String );
-    void SetMaxStep (G4double );
-    void SetCheckOverlaps(G4bool );
+    void SetWorldMaterial (G4String );
+    void SetRoomMaterial (G4String );    
+    void SetCollimaterMaterial(G4String );
+
+
+    
+    G4double getroominLength(){ return  roominLength;};
+
+     G4double getroominWidth(){return roominWidth;};
+
+     G4double getroominHighth(){return roominHighth;};
+
+    G4LogicalVolume* GetLogicDetector1(); 
+
+    G4LogicalVolume* GetLogicDetector2(); 
 
   private:
     // methods
     void DefineMaterials();
+
     G4VPhysicalVolume* DefineVolumes();
+    
+    G4LogicalVolume* roomdetLV = nullptr;
 
-    // static data members
-    static G4ThreadLocal G4GlobalMagFieldMessenger*  fMagFieldMessenger;
-                                         // magnetic field messenger
-    // data members
-    G4int fNbOfChambers = 0;
+    G4LogicalVolume* absorberdetLV = nullptr;
+    
+    G4Material* Air = nullptr; 
+    G4Material* Pb = nullptr; 
+    G4Material* Concrete = nullptr;
+    G4Material* Fe = nullptr; 
+    G4double roominLength = 4.5*m ; 
 
-    G4LogicalVolume*  fLogicTarget = nullptr;  // pointer to the logical Target
-    G4LogicalVolume** fLogicChamber = nullptr; // pointer to the logical Chamber
+    G4double roominWidth  = 6*m ; 
 
-    G4Material*       fTargetMaterial = nullptr;  // pointer to the target  material
-    G4Material*       fChamberMaterial = nullptr; // pointer to the chamber material
+    G4double roominHighth = 4.5*m; 
 
-    G4UserLimits* fStepLimit = nullptr; // pointer to user step limits
-
-    DetectorMessenger* fMessenger = nullptr; // messenger
-
-    G4bool fCheckOverlaps = true; // option to activate checking of volumes overlaps
 };
 
-}
 
 #endif

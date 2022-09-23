@@ -35,8 +35,7 @@
 #include "G4SystemOfUnits.hh"
 #include "G4AccumulableManager.hh"
 
-namespace B2
-{
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -45,7 +44,8 @@ RunAction::RunAction()
   // set printing event number per each 100 events
   G4RunManager::GetRunManager()->SetPrintProgress(100);
   G4AccumulableManager* accumulableManager = G4AccumulableManager::Instance();
-  accumulableManager->RegisterAccumulable(fEdep);
+  accumulableManager->RegisterAccumulable(fEdep1);
+  accumulableManager->RegisterAccumulable(fEdep2);
 
 ///
    auto analysisManager = G4AnalysisManager::Instance();
@@ -57,12 +57,15 @@ RunAction::RunAction()
 
   //创建Histogram
  
-  analysisManager->CreateH1("fEdep","Edep in 5",100,0.5,1.2*MeV);
+  analysisManager->CreateH1("fEdep1","Edep in absorberdet",100,0.,700*keV);//ID 0
+
+  analysisManager->CreateH1("fEdep2","Edep in roomdetLV",100,0.,700*keV);// ID 1
 
 
   //创建 ntuple
   analysisManager->CreateNtuple("Mydata","Energy deposit");
-  analysisManager->CreateNtupleDColumn("fEdep");
+  analysisManager->CreateNtupleDColumn("fEdep1");
+  analysisManager->CreateNtupleDColumn("fEdep2");
   analysisManager->FinishNtuple();
  
 
@@ -104,9 +107,10 @@ void RunAction::EndOfRunAction(const G4Run* )
   accumulableManager->Merge(); 
   
   
-  G4double redep = fEdep.GetValue();
-
- G4cout << "r edep is " << redep << G4endl;
+  G4double redep1 = fEdep1.GetValue();
+  G4double redep2 = fEdep2.GetValue();
+  G4cout << "Total energy in absorberdet is " << redep1 << G4endl;
+  G4cout << "Total energy in roomdet is " << redep2 << G4endl;
 
   //写入和关闭动作
    auto analysisManager = G4AnalysisManager::Instance();
@@ -124,9 +128,14 @@ void RunAction::EndOfRunAction(const G4Run* )
 
 
 }
-void RunAction::AddEdep(G4double edep)
+void RunAction::AddEdep1(G4double edep)
 {
-  fEdep  += edep;
+  fEdep1  += edep;
+
+}
+void RunAction::AddEdep2(G4double edep)
+{
+  fEdep2  += edep;
 
 }
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -134,5 +143,5 @@ void RunAction::AddEdep(G4double edep)
 
 
 
-}
+
 

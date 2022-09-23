@@ -34,10 +34,9 @@
 #include "G4THitsCollection.hh"
 #include "G4Allocator.hh"
 #include "G4ThreeVector.hh"
-#include "tls.hh"
 
-namespace B2
-{
+
+
 
 /// Tracker hit class
 ///
@@ -107,6 +106,6 @@ inline void TrackerHit::operator delete(void *hit)
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-}
+
 
 #endif

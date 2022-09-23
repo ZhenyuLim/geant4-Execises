@@ -32,8 +32,7 @@
 #include "RunAction.hh"
 #include "EventAction.hh"
 
-namespace B2
-{
+#include "TrackingAction.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -49,7 +48,8 @@ ActionInitialization::~ActionInitialization()
 
 void ActionInitialization::BuildForMaster() const
 {
-  SetUserAction(new RunAction);
+  RunAction* runAction = new RunAction();
+  SetUserAction(runAction);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -60,17 +60,21 @@ void ActionInitialization::Build() const
 
 
 /////
-  SetUserAction(new PrimaryGeneratorAction);
+  PrimaryGeneratorAction* primary = new PrimaryGeneratorAction();
+  SetUserAction(primary);
 
-  RunAction* runAction = new RunAction;
+  RunAction* runAction = new RunAction();
   SetUserAction(runAction);
 
   EventAction* eventAction = new EventAction(runAction);
   SetUserAction(eventAction);
 
+
+  TrackingAction* trackingAction = new TrackingAction(fDetector);
+  SetUserAction(trackingAction);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-}
+
 

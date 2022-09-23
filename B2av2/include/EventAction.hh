@@ -36,8 +36,7 @@
 
 #include "TrackerHit.hh"
 
-namespace B2
-{
+
 
 class RunAction;
 
@@ -57,13 +56,15 @@ class EventAction : public G4UserEventAction
     RunAction* fRunAction = nullptr ; 
   TrackerHitsCollection* GetHitsCollection(G4int hcID,
                                             const G4Event* event) const;
-  G4int fTkHCID = -1;
-  G4double sum ;
+  G4int fTkHCID1 = -1;
+  G4int fTkHCID2 = -1;
+  G4double fEdep1 ;
+  G4double fEdep2 ;
   
 
 
 };
 
-}
+
 
 #endif

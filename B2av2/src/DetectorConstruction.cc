@@ -28,7 +28,7 @@
 /// \brief Implementation of the B2a::DetectorConstruction class
 
 #include "DetectorConstruction.hh"
-#include "DetectorMessenger.hh"
+/* #include "DetectorMessenger.hh" */
 #include "TrackerSD.hh"
 
 #include "G4Material.hh"
@@ -52,31 +52,25 @@
 
 #include "G4SystemOfUnits.hh"
 
-using namespace B2;
+#include "G4SubtractionSolid.hh"
 
-namespace B2a
-{
+#include "PrimaryGeneratorAction.hh"
+
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4ThreadLocal
-G4GlobalMagFieldMessenger* DetectorConstruction::fMagFieldMessenger = nullptr;
 
 DetectorConstruction::DetectorConstruction()
 {
-  fMessenger = new DetectorMessenger(this);
 
-  fNbOfChambers = 5;
-  fLogicChamber = new G4LogicalVolume*[fNbOfChambers];
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 DetectorConstruction::~DetectorConstruction()
 {
-  delete [] fLogicChamber;
-  delete fStepLimit;
-  delete fMessenger;
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -99,189 +93,289 @@ void DetectorConstruction::DefineMaterials()
   G4NistManager* nistManager = G4NistManager::Instance();
 
   // Air defined using NIST Manager
-  nistManager->FindOrBuildMaterial("G4_AIR");
+  Air = nistManager->FindOrBuildMaterial("G4_AIR");
 
   // Lead defined using NIST Manager
-  fTargetMaterial  = nistManager->FindOrBuildMaterial("G4_Pb");
+  Pb  = nistManager->FindOrBuildMaterial("G4_Pb");
 
   // Xenon gas defined using NIST Manager
-  fChamberMaterial = nistManager->FindOrBuildMaterial("G4_Xe");
+  Concrete = nistManager->FindOrBuildMaterial("G4_CONCRETE");
 
   // Print materials
-  G4cout << *(G4Material::GetMaterialTable()) << G4endl;
+/*   G4cout << *(G4Material::GetMaterialTable()) << G4endl; */
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4VPhysicalVolume* DetectorConstruction::DefineVolumes()
 {
-  G4Material* air  = G4Material::GetMaterial("G4_AIR");
+// world volume
+  G4double worldLength = 7*m; // from chamber center to center!
 
-  // Sizes of the principal geometrical components (solids)
+  G4double worldWidth  = 10*m; // width of the chambers
 
-  G4double chamberSpacing = 80*cm; // from chamber center to center!
+  G4double worldHighth = 7*m; // width of the chambers
 
-  G4double chamberWidth = 20.0*cm; // width of the chambers
-  G4double targetLength =  5.0*cm; // full length of Target
+  G4Box* worldS = new G4Box("world",worldLength/2,worldWidth/2,worldHighth/2); 
+  
+  G4LogicalVolume* worldLV = new G4LogicalVolume(worldS,Air,"World");
 
-  G4double trackerLength = (fNbOfChambers+1)*chamberSpacing;
+  G4VPhysicalVolume* worldPV = new G4PVPlacement(0,G4ThreeVector(),worldLV,"World",0,true,0,true);
 
-  G4double worldLength = 1.2 * (2*targetLength + trackerLength);
+// room volume
 
-  G4double targetRadius  = 0.5*targetLength;   // Radius of Target
-  targetLength = 0.5*targetLength;             // Half length of the Target
-  G4double trackerSize   = 0.5*trackerLength;  // Half length of the Tracker
 
-  // Definitions of Solids, Logical Volumes, Physical Volumes
+  G4double roomoutLength = roominLength/2+20*cm; 
 
-  // World
+  G4double roomoutWidth  = roominWidth/2+20*cm; 
 
-  G4GeometryManager::GetInstance()->SetWorldMaximumExtent(worldLength);
+  G4double roomoutHighth = roominHighth/2+20*cm; 
 
-  G4cout << "Computed tolerance = "
-         << G4GeometryTolerance::GetInstance()->GetSurfaceTolerance()/mm
-         << " mm" << G4endl;
 
-  G4Box* worldS
-    = new G4Box("world",                                    //its name
-                worldLength/2,worldLength/2,worldLength/2); //its size
-  G4LogicalVolume* worldLV
-    = new G4LogicalVolume(
-                 worldS,   //its solid
-                 air,      //its material
-                 "World"); //its name
+  G4Box* innerroomS = new G4Box("innerroom",roominLength/2,roominWidth/2,roominHighth/2); 
+  
+  G4Box* outroomS = new G4Box("outroom",roomoutLength,roomoutWidth,roomoutHighth); 
 
-  //  Must place the World Physical volume unrotated at (0,0,0).
-  //
-  G4VPhysicalVolume* worldPV
-    = new G4PVPlacement(
-                 0,               // no rotation
-                 G4ThreeVector(), // at (0,0,0)
-                 worldLV,         // its logical volume
-                 "World",         // its name
-                 0,               // its mother  volume
-                 false,           // no boolean operations
-                 0,               // copy number
-                 fCheckOverlaps); // checking overlaps
+  G4SubtractionSolid* roomsolid = new G4SubtractionSolid("Room",outroomS,innerroomS);
 
-  // Target
+  G4LogicalVolume* roomLV = new G4LogicalVolume(roomsolid,Concrete,"roomLV");
 
-  G4ThreeVector positionTarget = G4ThreeVector(0,0,-(targetLength+trackerSize));
+  new G4PVPlacement(0,G4ThreeVector(),roomLV,"roomPV",worldLV,true,0,true);
+  
+  ////////////////////////////////get source position
 
-  G4Tubs* targetS
-    = new G4Tubs("target",0.,targetRadius,targetLength,0.*deg,360.*deg);
-  fLogicTarget
-    = new G4LogicalVolume(targetS, fTargetMaterial,"Target",0,0,0);
+  PrimaryGeneratorAction sourceposition;
+
+  G4double sourceX = sourceposition.sourcepositionX();
+
+
+  G4double sourceY = sourceposition.sourcepositionY();
+
+
+  G4double sourceZ = sourceposition.sourcepositionZ();
+ 
+  //construct source container
+   
+  G4double ScinLength = 2.5*cm; 
+
+  G4double ScinWidth  = 2.5*cm; 
+
+  G4double ScinHighth = 2.5*cm; 
+
+  G4double ScoutLength = ScinLength+4*cm; 
+
+  G4double ScoutWidth = ScinWidth+4*cm;
+
+  G4double ScoutHighth = ScinHighth+4*cm;
+  
+    //Air Box
+  G4Box* innerSc = new G4Box("innerSc",ScinLength,ScinWidth,ScinHighth); 
+  
+  G4Box* outSc = new G4Box("outSc",ScoutLength,ScoutWidth,ScoutHighth); 
+
+  G4SubtractionSolid* Scsolid = new G4SubtractionSolid("SourceContain",outSc,innerSc);
+  
+    // window 2 --Tub
+  G4double windowRadius = 2.5*cm; 
+
+  G4double windwWidth = ScoutWidth-ScinWidth+0.1*cm;
+
+  G4Tubs* windows = new G4Tubs("Outcoll_soild", 0, windowRadius, windwWidth, 0.*deg, 360.*deg);
+
+  G4RotationMatrix* yrot = new G4RotationMatrix();
+  
+  yrot->rotateX(G4double(90*deg));
+
+  G4ThreeVector yTrans(0,-ScinWidth-windwWidth,0);
+
+  G4SubtractionSolid* subtraction = new G4SubtractionSolid("Box-window", Scsolid, windows, yrot, yTrans);
+
+  G4LogicalVolume* ScLV = new G4LogicalVolume(subtraction,Pb,"SourceContainLV");
+
+  new G4PVPlacement(0,G4ThreeVector(sourceX,sourceY,sourceZ),ScLV,"SourceContainPV",worldLV,true,0,true);
+
+
+
+// collimater volume - type1
+ //layer1
+  G4double outcollimaterRadius1 = windowRadius+1*cm; 
+
+  G4double outcollimaterHighth1 = 7.5*mm; 
+
+  G4double inncollimaterRadius1 = windowRadius;
+
+  G4double incollimaterHighth1 = 7.6*mm;  
+
+  G4Tubs* outcoll1soild1  = new G4Tubs("Outcoll_soild", 0, outcollimaterRadius1, outcollimaterHighth1, 0.*deg, 360.*deg);
+
+  G4Tubs* inncoll1soild1  = new G4Tubs("Innercoll_soild", 0, inncollimaterRadius1, incollimaterHighth1, 0.*deg, 360.*deg);
+
+  G4SubtractionSolid* collimatersolid1 = new G4SubtractionSolid("Collimater",outcoll1soild1,inncoll1soild1);
+
+  G4LogicalVolume* collimaterLV1 = new G4LogicalVolume(collimatersolid1,Pb,"Collimater1");
+
+//rotate setting
+  G4RotationMatrix* rot = new G4RotationMatrix();
+  rot->rotateX(G4double(90*deg));
+
+  new G4PVPlacement(rot,G4ThreeVector(0*m,sourceY-ScoutWidth-outcollimaterHighth1-0.5*mm,sourceZ),collimaterLV1,"Collimater1",worldLV,true,0,true);
+
+
+ //layer2
+
+  G4double inncollimaterRadius2 = outcollimaterRadius1;
+
+  G4double incollimaterHighth2 = 7.6*mm;  
+
+  G4double outcollimaterRadius2 = inncollimaterRadius2+1*cm; 
+
+  G4double outcollimaterHighth2 = 7.5*mm; 
+
+  G4Tubs* outcoll1soild2  = new G4Tubs("Outcoll_soild", 0, outcollimaterRadius2, outcollimaterHighth2, 0.*deg, 360.*deg);
+
+  G4Tubs* inncoll1soild2  = new G4Tubs("Innercoll_soild", 0, inncollimaterRadius2, incollimaterHighth2, 0.*deg, 360.*deg);
+
+  G4SubtractionSolid* collimatersolid2 = new G4SubtractionSolid("Collimater",outcoll1soild2,inncoll1soild2);
+
+  G4LogicalVolume* collimaterLV2 = new G4LogicalVolume(collimatersolid2,Pb,"Collimater2");
+
+  new G4PVPlacement(rot,G4ThreeVector(0*m,sourceY-ScoutWidth-3*outcollimaterHighth1-0.5*mm,sourceZ),collimaterLV2,"Collimater2",worldLV,true,0,true);
+
+
+
+
+ //layer3
+
+  G4double inncollimaterRadius3 = outcollimaterRadius2;
+
+  G4double incollimaterHighth3 = 7.6*mm;  
+
+  G4double outcollimaterRadius3 = inncollimaterRadius3+1*cm; 
+
+  G4double outcollimaterHighth3 = 7.5*mm; 
+
+  G4Tubs* outcoll1soild3  = new G4Tubs("Outcoll_soild", 0, outcollimaterRadius3, outcollimaterHighth3, 0.*deg, 360.*deg);
+
+  G4Tubs* inncoll1soild3  = new G4Tubs("Innercoll_soild", 0, inncollimaterRadius3, incollimaterHighth3, 0.*deg, 360.*deg);
+
+  G4SubtractionSolid* collimatersolid3 = new G4SubtractionSolid("Collimater",outcoll1soild3,inncoll1soild3);
+
+  G4LogicalVolume* collimaterLV3 = new G4LogicalVolume(collimatersolid3,Pb,"Collimater3");
+
+  new G4PVPlacement(rot,G4ThreeVector(0*m,sourceY-ScoutWidth-5*outcollimaterHighth1-0.5*mm,sourceZ),collimaterLV3,"Collimater3",worldLV,true,0,true);
+
+
+
+
+ //layer4
+
+  G4double inncollimaterRadius4 = outcollimaterRadius3;
+
+  G4double incollimaterHighth4 = 7.6*mm;  
+
+  G4double outcollimaterRadius4 = inncollimaterRadius4+1*cm; 
+
+  G4double outcollimaterHighth4 = 7.5*mm; 
+
+  G4Tubs* outcoll1soild4  = new G4Tubs("Outcoll_soild", 0, outcollimaterRadius4, outcollimaterHighth4, 0.*deg, 360.*deg);
+
+  G4Tubs* inncoll1soild4  = new G4Tubs("Innercoll_soild", 0, inncollimaterRadius4, incollimaterHighth4, 0.*deg, 360.*deg);
+
+  G4SubtractionSolid* collimatersolid4 = new G4SubtractionSolid("Collimater",outcoll1soild4,inncoll1soild4);
+
+  G4LogicalVolume* collimaterLV4 = new G4LogicalVolume(collimatersolid4,Pb,"Collimater4");
+
+  new G4PVPlacement(rot,G4ThreeVector(0*m,sourceY-ScoutWidth-7*outcollimaterHighth1-0.5*mm,sourceZ),collimaterLV4,"Collimater4",worldLV,true,0,true);
+
+
+
+ //layer5
+
+  G4double inncollimaterRadius5 = outcollimaterRadius4;
+
+  G4double incollimaterHighth5 = 7.6*mm;  
+
+  G4double outcollimaterRadius5 = inncollimaterRadius5+1*cm; 
+
+  G4double outcollimaterHighth5 = 7.5*mm; 
+
+  G4Tubs* outcoll1soild5  = new G4Tubs("Outcoll_soild", 0, outcollimaterRadius5, outcollimaterHighth5, 0.*deg, 360.*deg);
+
+  G4Tubs* inncoll1soild5  = new G4Tubs("Innercoll_soild", 0, inncollimaterRadius5, incollimaterHighth5, 0.*deg, 360.*deg);
+
+  G4SubtractionSolid* collimatersolid5 = new G4SubtractionSolid("Collimater",outcoll1soild5,inncoll1soild5);
+
+  G4LogicalVolume* collimaterLV5 = new G4LogicalVolume(collimatersolid5,Pb,"Collimater5");
+
+  new G4PVPlacement(rot,G4ThreeVector(0*m,sourceY-ScoutWidth-9*outcollimaterHighth1-0.5*mm,sourceZ),collimaterLV5,"Collimater5",worldLV,true,0,true);
+
+ //detector volume 1
+
+  G4double detecLength = roomoutLength+0.1*cm; 
+
+  G4double detecWidth  = roomoutWidth+0.1*cm; 
+
+  G4double detecHighth = roomoutHighth+0.1*cm; 
+
+  G4Box* innerdetecS = new G4Box("innerdetec",detecLength,detecWidth,detecHighth);
+  
+  G4Box* outdetecS = new G4Box("outdetec",detecLength+2*cm,detecWidth+2*cm,detecHighth+2*cm); 
+
+  G4SubtractionSolid* detecsolid = new G4SubtractionSolid("detecsd",outdetecS,innerdetecS);
+
+  G4LogicalVolume* roomdetLV = new G4LogicalVolume(detecsolid,Concrete,"roomdetLV");
+
+  new G4PVPlacement(0,G4ThreeVector(),roomdetLV,"detecpv",worldLV,true,0,true);  
+
+  
+/* detector volume 2   detection around source
+  G4Box* outScdet = new G4Box("outScdet",ScinLength-0.1*cm,ScinWidth-0.1*cm,ScinHighth-0.1*cm); 
+
+  G4Box* innerScdet = new G4Box("innerScdet",ScinLength-1.1*cm,ScinWidth-1.1*cm,ScinHighth-1.1*cm); 
+
+  G4SubtractionSolid* Scdetsolid = new G4SubtractionSolid("SourceContain",outScdet,innerScdet);
+
+  G4LogicalVolume* ScdetsolidLV = new G4LogicalVolume(Scdetsolid,Air,"ScdetsolidLV");
+
+  new G4PVPlacement(0,G4ThreeVector(sourceX,sourceY,sourceZ),ScdetsolidLV,"ScdetsolidPV",worldLV,true,0,true);   */
+
+
+// detector volume 3   A layer Pb absorber in the centre of room
+/* G4Box* trackerS = new G4Box("tracker",50*cm,5*mm,50*cm);
+G4LogicalVolume* trackerLV
+    = new G4LogicalVolume(trackerS, Air, "Tracker",0,0,0);
   new G4PVPlacement(0,               // no rotation
-                    positionTarget,  // at (x,y,z)
-                    fLogicTarget,    // its logical volume
-                    "Target",        // its name
-                    worldLV,         // its mother volume
-                    false,           // no boolean operations
-                    0,               // copy number
-                    fCheckOverlaps); // checking overlaps
-
-  G4cout << "Target is " << 2*targetLength/cm << " cm of "
-         << fTargetMaterial->GetName() << G4endl;
-
-  // Tracker
-
-  G4ThreeVector positionTracker = G4ThreeVector(0,0,0);
-
-  G4Tubs* trackerS
-    = new G4Tubs("tracker",0,trackerSize,trackerSize, 0.*deg, 360.*deg);
-  G4LogicalVolume* trackerLV
-    = new G4LogicalVolume(trackerS, air, "Tracker",0,0,0);
-  new G4PVPlacement(0,               // no rotation
-                    positionTracker, // at (x,y,z)
+                    G4ThreeVector(0,sourceY-1*m,sourceZ), // at (x,y,z)
                     trackerLV,       // its logical volume
                     "Tracker",       // its name
                     worldLV,         // its mother  volume
                     false,           // no boolean operations
                     0,               // copy number
-                    fCheckOverlaps); // checking overlaps
+                    true); // checking overlaps */
+//////////////////
 
-  // Visualization attributes
 
-  G4VisAttributes* boxVisAtt= new G4VisAttributes(G4Colour(1.0,1.0,1.0));
-  G4VisAttributes* chamberVisAtt = new G4VisAttributes(G4Colour(1.0,1.0,0.0));
 
-  worldLV      ->SetVisAttributes(boxVisAtt);
-  fLogicTarget ->SetVisAttributes(boxVisAtt);
-  trackerLV    ->SetVisAttributes(boxVisAtt);
+//////////////////
 
-  // Tracker segments
+  G4Box* absorberdet = new G4Box("absorberdet",100*cm,4*cm,100*cm); 
 
-  G4cout << "There are " << fNbOfChambers << " chambers in the tracker region. "
-         << G4endl
-         << "The chambers are " << chamberWidth/cm << " cm of "
-         << fChamberMaterial->GetName() << G4endl
-         << "The distance between chamber is " << chamberSpacing/cm << " cm"
-         << G4endl;
+  G4LogicalVolume* absorberdetLV = new G4LogicalVolume(absorberdet,Pb,"absorberdetLV");
 
-  G4double firstPosition = -trackerSize + chamberSpacing;
-  G4double firstLength   = trackerLength/10;
-  G4double lastLength    = trackerLength;
 
-  G4double halfWidth = 0.5*chamberWidth;
-  G4double rmaxFirst = 0.5 * firstLength;
 
-  G4double rmaxIncr = 0.0;
-  if( fNbOfChambers > 0 ){
-    rmaxIncr =  0.5 * (lastLength-firstLength)/(fNbOfChambers-1);
-    if (chamberSpacing  < chamberWidth) {
-       G4Exception("DetectorConstruction::DefineVolumes()",
-                   "InvalidSetup", FatalException,
-                   "Width>Spacing");
-    }
-  }
+  new G4PVPlacement(0,G4ThreeVector(0,sourceY-1*m,sourceZ),absorberdetLV,"absorberdetPV",worldLV,true,0,true); 
 
-  for (G4int copyNo=0; copyNo<fNbOfChambers; copyNo++) {
 
-      G4double Zposition = firstPosition + copyNo * chamberSpacing;
-      G4double rmax =  rmaxFirst + copyNo * rmaxIncr;
 
-      G4Tubs* chamberS
-        = new G4Tubs("Chamber_solid", 0, rmax, halfWidth, 0.*deg, 360.*deg);
 
-      fLogicChamber[copyNo] =
-              new G4LogicalVolume(chamberS,fChamberMaterial,"Chamber_LV",0,0,0);
 
-      fLogicChamber[copyNo]->SetVisAttributes(chamberVisAtt);
 
-      new G4PVPlacement(0,                            // no rotation
-                        G4ThreeVector(0,0,Zposition), // at (x,y,z)
-                        fLogicChamber[copyNo],        // its logical volume
-                        "Chamber_PV",                 // its name
-                        trackerLV,                    // its mother  volume
-                        false,                        // no boolean operations
-                        copyNo,                       // copy number
-                        fCheckOverlaps);              // checking overlaps
-
-  }
-
-  // Example of User Limits
-  //
-  // Below is an example of how to set tracking constraints in a given
-  // logical volume
-  //
-  // Sets a max step length in the tracker region, with G4StepLimiter
-
-  G4double maxStep = 0.5*chamberWidth;
-  fStepLimit = new G4UserLimits(maxStep);
-  trackerLV->SetUserLimits(fStepLimit);
-
-  /// Set additional contraints on the track, with G4UserSpecialCuts
-  ///
-  /// G4double maxLength = 2*trackerLength, maxTime = 0.1*ns, minEkin = 10*MeV;
-  /// trackerLV->SetUserLimits(new G4UserLimits(maxStep,
-  ///                                           maxLength,
-  ///                                           maxTime,
-  ///                                           minEkin));
-
-  // Always return the physical world
 
   return worldPV;
+ 
+
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -290,92 +384,47 @@ void DetectorConstruction::ConstructSDandField()
 {
   // Sensitive detectors
 
-  G4String trackerChamberSDname = "/TrackerChamberSD";
-  TrackerSD* aTrackerSD = new TrackerSD(trackerChamberSDname,
-                                            "TrackerHitsCollection1");
-  G4SDManager::GetSDMpointer()->AddNewDetector(aTrackerSD);
+  G4String Detect1SDname = "/Detect1SD";
+  TrackerSD* aTrackerSD1 = new TrackerSD(Detect1SDname,
+                                            "HitsCollection1");
+  G4SDManager::GetSDMpointer()->AddNewDetector(aTrackerSD1);
   // Setting aTrackerSD to all logical volumes with the same name
   // of "Chamber_LV".
-  SetSensitiveDetector("Chamber_LV", aTrackerSD, true);
+  SetSensitiveDetector("absorberdetLV", aTrackerSD1, true);
 
-  // Create global magnetic field messenger.
-  // Uniform magnetic field is then created automatically if
-  // the field value is not zero.
-  G4ThreeVector fieldValue = G4ThreeVector();
-  fMagFieldMessenger = new G4GlobalMagFieldMessenger(fieldValue);
-  fMagFieldMessenger->SetVerboseLevel(1);
+/////////////////////////////////////////////////
 
-  // Register the field messenger for deleting
-  G4AutoDelete::Register(fMagFieldMessenger);
+  G4String Detect2SDname = "/Detect2SD";
+  TrackerSD* aTrackerSD2 = new TrackerSD(Detect2SDname,
+                                            "HitsCollection2");
+  G4SDManager::GetSDMpointer()->AddNewDetector(aTrackerSD2);
+  // Setting aTrackerSD to all logical volumes with the same name
+  // of "Chamber_LV".
+  SetSensitiveDetector("roomdetLV", aTrackerSD2, true);
+
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void DetectorConstruction::SetTargetMaterial(G4String materialName)
+
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+G4LogicalVolume* DetectorConstruction::GetLogicDetector2()
 {
-  G4NistManager* nistManager = G4NistManager::Instance();
-
-  G4Material* pttoMaterial =
-              nistManager->FindOrBuildMaterial(materialName);
-
-  if (fTargetMaterial != pttoMaterial) {
-     if ( pttoMaterial ) {
-        fTargetMaterial = pttoMaterial;
-        if (fLogicTarget) fLogicTarget->SetMaterial(fTargetMaterial);
-        G4cout
-          << G4endl
-          << "----> The target is made of " << materialName << G4endl;
-     } else {
-        G4cout
-          << G4endl
-          << "-->  WARNING from SetTargetMaterial : "
-          << materialName << " not found" << G4endl;
-     }
-  }
+  return roomdetLV;
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void DetectorConstruction::SetChamberMaterial(G4String materialName)
+G4LogicalVolume* DetectorConstruction::GetLogicDetector1()
 {
-  G4NistManager* nistManager = G4NistManager::Instance();
-
-  G4Material* pttoMaterial =
-              nistManager->FindOrBuildMaterial(materialName);
-
-  if (fChamberMaterial != pttoMaterial) {
-     if ( pttoMaterial ) {
-        fChamberMaterial = pttoMaterial;
-        for (G4int copyNo=0; copyNo<fNbOfChambers; copyNo++) {
-            if (fLogicChamber[copyNo]) fLogicChamber[copyNo]->
-                                               SetMaterial(fChamberMaterial);
-        }
-        G4cout
-          << G4endl
-          << "----> The chambers are made of " << materialName << G4endl;
-     } else {
-        G4cout
-          << G4endl
-          << "-->  WARNING from SetChamberMaterial : "
-          << materialName << " not found" << G4endl;
-     }
-  }
+  return absorberdetLV;
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void DetectorConstruction::SetMaxStep(G4double maxStep)
-{
-  if ((fStepLimit)&&(maxStep>0.)) fStepLimit->SetMaxAllowedStep(maxStep);
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-void DetectorConstruction::SetCheckOverlaps(G4bool checkOverlaps)
-{
-  fCheckOverlaps = checkOverlaps;
-}
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-}

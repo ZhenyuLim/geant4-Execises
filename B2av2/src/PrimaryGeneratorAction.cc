@@ -39,63 +39,67 @@
 #include "G4SystemOfUnits.hh"
 #include "Randomize.hh"
 
-namespace B2
-{
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 PrimaryGeneratorAction::PrimaryGeneratorAction()
 {
   G4int nofParticles = 1;
-  fParticleGun = new G4ParticleGun(nofParticles);
+  particleGun = new G4ParticleGun(nofParticles);
 
   // default particle kinematic
 
   G4ParticleDefinition* particleDefinition
-    = G4ParticleTable::GetParticleTable()->FindParticle("proton");
+    = G4ParticleTable::GetParticleTable()->FindParticle("gamma");
 
-  fParticleGun->SetParticleDefinition(particleDefinition);
-  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0.,0.,1.));
-  fParticleGun->SetParticleEnergy(3.0*GeV);
+  particleGun->SetParticleDefinition(particleDefinition);
+
+  particleGun->SetParticleEnergy(662*keV);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction()
 {
-  delete fParticleGun;
+  delete particleGun;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
-  // This function is called at the begining of event
 
-  // In order to avoid dependence of PrimaryGeneratorAction
-  // on DetectorConstruction class we get world volume
-  // from G4LogicalVolumeStore.
+///方式1 
 
-  G4double worldZHalfLength = 0;
-  G4LogicalVolume* worldLV
-    = G4LogicalVolumeStore::GetInstance()->GetVolume("World");
-  G4Box* worldBox = nullptr;
-  if ( worldLV ) worldBox = dynamic_cast<G4Box*>(worldLV->GetSolid());
-  if ( worldBox ) worldZHalfLength = worldBox->GetZHalfLength();
-  else  {
-    G4cerr << "World volume of box not found." << G4endl;
-    G4cerr << "Perhaps you have changed geometry." << G4endl;
-    G4cerr << "The gun will be place in the center." << G4endl;
-  }
+ G4double conTheta = 2*G4UniformRand()-1., phi = 1.5*pi+(2*G4UniformRand()-1)*0.2*pi;//沿着长边方向30度立体角
+G4double sinTheta = std::sqrt(1.-conTheta*conTheta);
+G4double ux = sinTheta*std::cos(phi), uy = sinTheta*std::sin(phi), uz = conTheta;
+particleGun->SetParticleMomentumDirection(G4ThreeVector(ux,uy,uz));  
+    
+/* ///方式4pi立体角
+auto theta = (G4UniformRand())*pi;
+auto phi = (G4UniformRand())*2*pi;
+G4double ux= std::sin(theta)*std::cos(phi);
+G4double uy= std::sin(theta)*std::sin(phi);
+G4double uz= std::cos(theta);
+particleGun->SetParticleMomentumDirection(G4ThreeVector(ux,uy,uz)); */
 
-  // Note that this particular case of starting a primary particle on the world boundary
-  // requires shooting in a direction towards inside the world.
-  fParticleGun->SetParticlePosition(G4ThreeVector(0., 0., -worldZHalfLength));
+    G4double x0 = sourceX;
+    G4double y0 = sourceY;
+    G4double z0 = sourceZ;
+    
+particleGun->SetParticlePosition(G4ThreeVector(x0,y0,z0));
+    
+    
 
-  fParticleGun->GeneratePrimaryVertex(anEvent);
+
+    
+
+    particleGun->GeneratePrimaryVertex(anEvent);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-}
+
 

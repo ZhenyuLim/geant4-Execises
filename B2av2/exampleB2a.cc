@@ -35,7 +35,7 @@
 #include "G4UImanager.hh"
 #include "FTFP_BERT.hh"
 #include "G4StepLimiterPhysics.hh"
-
+#include "DetectorConstruction.hh"
 #include "Randomize.hh"
 
 #include "G4VisExecutive.hh"
@@ -65,14 +65,18 @@ int main(int argc,char** argv)
 
   // Set mandatory initialization classes
   //
-  runManager->SetUserInitialization(new B2a::DetectorConstruction());
+
+  DetectorConstruction* det= new DetectorConstruction;
+
+
+  runManager->SetUserInitialization(det);
 
   G4VModularPhysicsList* physicsList = new FTFP_BERT;
   physicsList->RegisterPhysics(new G4StepLimiterPhysics());
   runManager->SetUserInitialization(physicsList);
 
   // Set user action classes
-  runManager->SetUserInitialization(new B2::ActionInitialization());
+  runManager->SetUserInitialization(new ActionInitialization());
 
   // Initialize visualization
   //

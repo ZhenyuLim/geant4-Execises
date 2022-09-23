@@ -42,8 +42,8 @@
 #include "TrackerHit.hh"
 #include "TrackerSD.hh"
 
-namespace B2
-{
+#include "Run.hh"
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -76,7 +76,7 @@ return hitsCollection;
 void EventAction::BeginOfEventAction(const G4Event*)
 {
 
-   sum = 0;
+   fEdep1 = fEdep2 = 0;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -103,23 +103,39 @@ void EventAction::EndOfEventAction(const G4Event* event)
            << hc->GetSize() << " hits stored in this event" << G4endl;
 
 
-   fTkHCID
-      = G4SDManager::GetSDMpointer()->GetCollectionID("TrackerHitsCollection1");
+   fTkHCID1
+      = G4SDManager::GetSDMpointer()->GetCollectionID("HitsCollection1");
     // Get hits collections
-   auto TkHC = GetHitsCollection(fTkHCID, event); 
-   G4int n = TkHC->entries();
+   auto TkHC1 = GetHitsCollection(fTkHCID1, event); 
+   G4int n1 = TkHC1->entries();
 
    // Get hit with total values
 
-       for (G4int i=0;i<n;i++){
-      auto TkHit = (*TkHC)[i];
-          sum += TkHit->GetEdep();
+       for (G4int i=0;i<n1;i++){
+      auto TkHit = (*TkHC1)[i];
+          fEdep1 += TkHit->GetEdep();
           
      }
          G4cout << "    "
-           <<" sum in endofevent is "<< sum << G4endl; 
-     fRunAction->AddEdep(sum); 
-      
+           <<" sum in absorberdet is "<< fEdep1 << G4endl; 
+     fRunAction->AddEdep1(fEdep1); 
+///////////////////////////////////////////////////
+   fTkHCID2
+      = G4SDManager::GetSDMpointer()->GetCollectionID("HitsCollection1");
+    // Get hits collections
+   auto TkHC2 = GetHitsCollection(fTkHCID2, event); 
+   G4int n2 = TkHC2->entries();
+
+   // Get hit with total values
+
+       for (G4int i=0;i<n2;i++){
+      auto TkHit = (*TkHC2)[i];
+          fEdep2 += TkHit->GetEdep();
+          
+     }
+         G4cout << "    "
+           <<" sum in roomdet is "<< fEdep2 << G4endl; 
+     fRunAction->AddEdep2(fEdep2); 
 //  }
 
     
@@ -129,11 +145,11 @@ void EventAction::EndOfEventAction(const G4Event* event)
 
    //填充Histogram
   auto analysisManager = G4AnalysisManager::Instance();
-  analysisManager->FillH1(0,sum);
-
-
+  analysisManager->FillH1(0,fEdep1);
+  analysisManager->FillH1(1,fEdep2);
   //填充 ntuple
-  analysisManager->FillNtupleDColumn(0,sum);
+  analysisManager->FillNtupleDColumn(0,fEdep1);
+  analysisManager->FillNtupleDColumn(1,fEdep2);
 
   analysisManager->AddNtupleRow();
 
@@ -143,5 +159,5 @@ void EventAction::EndOfEventAction(const G4Event* event)
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-}
+
 

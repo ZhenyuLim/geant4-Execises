@@ -41,8 +41,7 @@
 class G4Step;
 class G4HCofThisEvent;
 class EventAction;
-namespace B2
-{
+
 
 /// Tracker sensitive detector class
 ///
@@ -72,6 +71,6 @@ class TrackerSD : public G4VSensitiveDetector
 
 };
 
-}
+
 
 #endif

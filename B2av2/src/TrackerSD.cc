@@ -35,8 +35,7 @@
 #include "G4ios.hh"
 #include "EventAction.hh"
 
-namespace B2
-{
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -84,8 +83,6 @@ G4bool TrackerSD::ProcessHits(G4Step* aStep,
   TrackerHit* newHit = new TrackerHit();
 
   newHit->SetTrackID  (aStep->GetTrack()->GetTrackID());
-  newHit->SetChamberNb(aStep->GetPreStepPoint()->GetTouchableHandle()
-                                               ->GetCopyNumber());
   newHit->SetEdep(edep);
   newHit->SetPos (aStep->GetPostStepPoint()->GetPosition());
 
@@ -126,5 +123,5 @@ void TrackerSD::EndOfEvent(G4HCofThisEvent* )
 
 
 
-}
+
 

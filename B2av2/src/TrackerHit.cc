@@ -36,8 +36,7 @@
 
 #include <iomanip>
 
-namespace B2
-{
+
 
 G4ThreadLocal G4Allocator<TrackerHit>* TrackerHitAllocator = nullptr;
 
@@ -89,4 +88,4 @@ void TrackerHit::Print()
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-}
+
